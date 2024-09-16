@@ -19,9 +19,16 @@ async def template(message):
     # Gets the context's channel 
     channel = message.channel
     # Summary template string
-    summary_template = "\nReading **(Book Title)** (chapter (**Chapter Number**)):\n# Chapter Title \n## ⭐️ Lessons Learnt\n- Paragraph 1\n- Paragraph 2\n- Paragraph ..."
+    summary_template = (
+        "\nReading **(Book Title)** (chapter (**Chapter Number**)):\n"
+        "# Chapter Title \n"
+        "## ⭐️ Lessons Learnt\n"
+        "- Paragraph 1\n"
+        "- Paragraph 2\n"
+        "- Paragraph ..."
+        )
     # Warning of deletion message string
-    warning_message = "**WARNING:** This template will be deleted after __10 seconds__. Copy the text quickly!\n"
+    warning_message = "**WARNING:** This template will be deleted after __10 seconds__. Copy the text quickly!"
     # Deletes the !template message straight away
     await message.message.delete()
     # Let's the users know that the template will be deleted after 10 seconds
