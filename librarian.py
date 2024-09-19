@@ -1,6 +1,6 @@
 import os
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import time
 import datetime
@@ -13,6 +13,12 @@ bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 
 streaks = {}
 
+@bot.event
+async def on_ready():
+    print(f'{bot.user.name} has connected to Discord!')
+
+    send_leaderboard.start()
+    
 @bot.command()
 async def template(message):
     '''
@@ -48,13 +54,20 @@ async def template(message):
 async def on_message(message):
     user_id = message.author.id
     channel = message.channel
+    current_date = datetime.datetime.now().date()
     if message.content.startswith("# Chapter Summary:"):
-        if user_id in streaks:  
-            streaks[user_id] += 1
-            await channel.send(f"{message.author.mention}, you have logged your chapter entry for today! Keep it up!")
+        if user_id in streaks: 
+            streak_count, last_entry_date = streaks[user_id] 
+
+            if last_entry_date == current_date:
+                await channel.send(f"{message.author.mention}, you have already entered your chapter entry for today! :low_battery:")
+            elif last_entry_date < current_date:
+                streaks[user_id] = (streak_count + 1, current_date)
+                await channel.send(f"{message.author.mention}, you have logged your chapter entry for today! Keep it up!")
+
 
         else:
-            streaks[user_id] = 1
+            streaks[user_id] = (1, current_date)
 
     await bot.process_commands(message)
 
@@ -71,12 +84,36 @@ async def streak(message):
     channel = message.channel
 
     if user_id in streaks:
-        if streaks[user_id] == 1:
+        streak_count, _ = streaks[user_id]
+        if streak_count == 1:
             await channel.send(f"{message.author.mention}, you've started a streak 🔥! **{streaks[user_id]} day** logged.")
         else: 
             await channel.send(f"{message.author.mention}, your current streak 🔥 is **{streaks[user_id]} days!**")
     else:
         await channel.send(f"{message.author.mention}, you haven't started a streak yet. 😢")
+
+@tasks.loop(hours=24)
+async def send_leaderboard():
+    current_time = datetime.now()
+    if current_time.hour == 8:
+        # leaderboard text channel
+        channel = bot.get_channel(1286228895858819134)
+        current_date = datetime.datetime.now().strftime("%d-%m-%Y")
+        
+        # Initial leaderboard message
+        leaderboard_message = f"`{current_date}`\nCurrent leaders of the 4D Book Club 📖\n\n**Name:**ᅠᅠᅠᅠᅠᅠᅠᅠᅠ**Streak:**\n"
+        
+        # Sort streaks and add entries to the leaderboard
+        sorted_streaks = sorted(streaks.items(), key = lambda x: x[1][0], reverse=True)
+        for user_id, streak_count in sorted_streaks:
+            username = bot.get_user(user_id)
+            leaderboard_message += f"{username.mention}ᅠᅠᅠᅠᅠᅠᅠᅠᅠ{streak_count} days\n"
+        
+        # Create the embedded message
+        embedded_msg = discord.Embed(title="**⭐ 2024 Leaderboard ⭐**", description=leaderboard_message, color=discord.Color.green())
+
+        # Send the message to the channel
+        await channel.send(embed=embedded_msg)
 
 
 
