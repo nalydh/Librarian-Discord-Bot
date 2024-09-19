@@ -56,6 +56,9 @@ async def template(message):
 
 @bot.event
 async def on_message(message):
+    if message.author.bot:
+        return
+    
     user_id = message.author.id
     channel = message.channel
     current_date = datetime.now(AEST).date()
@@ -75,7 +78,7 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-@bot.command()
+@bot.command(aliases=["streaks"])
 async def streak(message):
     user_id = message.author.id
     channel = message.channel
@@ -83,11 +86,34 @@ async def streak(message):
     if user_id in streaks:
         streak_count, _ = streaks[user_id]
         if streak_count == 1:
-            await channel.send(f"{message.author.mention}, you've started a streak 🔥! **{streaks[user_id]} day** logged.")
+            await channel.send(f"{message.author.mention}, you've started a streak 🔥! **{streak_count} day** logged.")
         else: 
-            await channel.send(f"{message.author.mention}, your current streak 🔥 is **{streaks[user_id]} days!**")
+            await channel.send(f"{message.author.mention}, your current streak 🔥 is **{streak_count} days!**")
     else:
         await channel.send(f"{message.author.mention}, you haven't started a streak yet.")
+
+@bot.command(aliases=["lb"])
+async def leaderboard(message):
+    current_time = datetime.now(AEST)
+    current_date = current_time.strftime("%d-%m-%Y")
+    channel = message.channel
+    
+    # Initial leaderboard message
+    leaderboard_message = f"`{current_date}`\nCurrent leaders of the 4D Book Club 📖\n\n**Name:**\n"
+    
+    # Sort streaks and add entries to the leaderboard
+    sorted_streaks = sorted(streaks.items(), key = lambda x: x[1][0], reverse=True)
+    for idx, (user_id, (streak_count, _)) in enumerate(sorted_streaks, 1):
+        username = bot.get_user(user_id)
+        leaderboard_message += f"**{idx}.** {username.mention} - **{streak_count} days 🔥** \n"
+    
+    # Create the embedded message
+    embedded_msg = discord.Embed(title="**⭐ 2024 Leaderboard ⭐**", description=leaderboard_message, color=discord.Color.green())
+
+    # Send the message to the channel
+    await channel.send(embed=embedded_msg)
+
+
 
 @tasks.loop(hours=24)
 async def send_leaderboard():
@@ -99,13 +125,13 @@ async def send_leaderboard():
         current_date = current_time.strftime("%d-%m-%Y")
         
         # Initial leaderboard message
-        leaderboard_message = f"`{current_date}`\nCurrent leaders of the 4D Book Club 📖\n\n**Name:**ᅠᅠᅠᅠᅠᅠᅠᅠᅠ**Streak:**\n"
+        leaderboard_message = f"`{current_date}`\nCurrent leaders of the 4D Book Club 📖\n\n**Name:**\n"
         
         # Sort streaks and add entries to the leaderboard
         sorted_streaks = sorted(streaks.items(), key = lambda x: x[1][0], reverse=True)
-        for user_id, (streak_count, _) in sorted_streaks:
+        for idx, (user_id, (streak_count, _)) in enumerate(sorted_streaks, 1):
             username = bot.get_user(user_id)
-            leaderboard_message += f"{username.mention}ᅠᅠᅠᅠᅠᅠᅠᅠᅠ{streak_count} days\n"
+            leaderboard_message += f"**{idx}.** {username.mention} - **{streak_count} days 💫** \n"
         
         # Create the embedded message
         embedded_msg = discord.Embed(title="**⭐ 2024 Leaderboard ⭐**", description=leaderboard_message, color=discord.Color.green())
@@ -135,5 +161,4 @@ async def check_deadline():
                 if username:
                     await channel.send(f"{username.mention}, you forgot to submit your chapter entry and lost your streak of {streak_count} days! 😢")
             
-
 bot.run(DISCORD_TOKEN)
