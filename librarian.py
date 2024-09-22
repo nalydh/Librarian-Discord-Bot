@@ -35,7 +35,7 @@ async def on_ready():
 async def template(message):
     '''
     This command method is called by !template
-    Sends a warning message about the deletion of the template and then waits for users to read this warning, after 3 seconds, the template is sent. After 10 seconds, the warning and template messages are deleted for cleanliness.    
+    Sends a warning message about the deletion of the template and then prints warning message, followed by the template. After 10 seconds, the warning and template messages are deleted for cleanliness.    
     '''
 
     # Gets the context's channel 
@@ -60,8 +60,6 @@ async def template(message):
     # Let's the users know that the template will be deleted after 10 seconds
     bot_output_warning = await channel.send(warning_message)
     
-    # Wait 3 seconds
-    await asyncio.sleep(2)
     
     # Sends the template to the channel the command was executed in
     bot_output_template = await channel.send(summary_template)
@@ -96,7 +94,7 @@ async def log_chapter(message):
     channel = message.channel
 
     # Create datetime object 
-    current_date = datetime.now()
+    current_date = datetime.now(AEST).date()
 
     # Store values from streaks dictionary
     if user_id in streaks: 
@@ -168,7 +166,7 @@ async def send_leaderboard(channel):
     # Send the message to the channel
     await channel.send(embed=embedded_msg)
 
-@tasks.loop(minutes=1)
+@tasks.loop(hours=1)
 async def announce_leaderboard():
     '''
     Task that the bot will execute at 8am everyday. 
@@ -191,7 +189,7 @@ async def announce_leaderboard():
         # Send the message to the channel
         await send_leaderboard(leaderboard_channel)
         
-@tasks.loop(minutes=1)
+@tasks.loop(hours=1)
 async def check_deadline():
     '''
     Task that the bot will execute at 10pm everyday.
