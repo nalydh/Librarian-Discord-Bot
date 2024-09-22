@@ -30,7 +30,7 @@ async def on_ready():
 
     print(f'{bot.user.name} has connected to Discord!')
 
-    send_leaderboard.start()
+    announce_leaderboard.start()
     check_deadline.start()
     
 @bot.command()
