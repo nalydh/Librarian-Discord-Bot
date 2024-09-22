@@ -6,9 +6,11 @@ import asyncio
 from datetime import datetime, timedelta
 import pytz
 
-load_dotenv("token.env")
+load_dotenv(".env")
 
 DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
+LEADERBOARD_CHANNEL_ID = os.getenv('LEADERBOARD_CHANNEL_ID')
+GENERAL_CHANNEL_ID = os.getenv('GENERAL_CHANNEL_ID')
 
 # Set timezone to AEST
 AEST = pytz.timezone('Australia/Sydney')
@@ -180,7 +182,7 @@ async def announce_leaderboard():
     if current_time.hour == 8 and current_time.minute == 0:
 
         # Leaderboard text channel
-        leaderboard_channel = bot.get_channel(1286228895858819134)
+        leaderboard_channel = LEADERBOARD_CHANNEL_ID
         
         # Goodmorning message
         gm_message = "@everyone Goodmorning everyone!"
@@ -201,7 +203,7 @@ async def check_deadline():
     current_time = datetime.now(AEST)
 
     # general text channel    
-    channel = bot.get_channel(1278334025639133238)
+    channel = bot.get_channel(GENERAL_CHANNEL_ID)
 
     # Checks if there are users with 0 entries and deletes them off streaks. 
     # This way, people with a streak of 0 are not pinged for this reminder.
