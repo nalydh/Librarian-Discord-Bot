@@ -146,7 +146,11 @@ async def check_deadline():
 
     # general text channel    
     channel = bot.get_channel(1278334025639133238)
-    for user_id, (streak_count, last_entry_date) in streaks.items():
+    for user_id, (streak_count, last_entry_date) in list(streaks.items()):
+        if streak_count == 0:
+            streaks.pop(user_id)
+            continue 
+        
         # Remind them that they have two hours left before losing their streak
         if current_date == last_entry_date + timedelta(days=1):
             if current_time.hour == 22:
