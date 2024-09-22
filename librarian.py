@@ -25,6 +25,7 @@ async def on_ready():
     This command method is called when the bot goes online.
     Prints a simple message to notify that the bot is running and starts regular tasks methods   
     '''
+
     print(f'{bot.user.name} has connected to Discord!')
 
     send_leaderboard.start()
@@ -36,6 +37,7 @@ async def template(message):
     This command method is called by !template
     Sends a warning message about the deletion of the template and then waits for users to read this warning, after 3 seconds, the template is sent. After 10 seconds, the warning and template messages are deleted for cleanliness.    
     '''
+
     # Gets the context's channel 
     channel = message.channel
 
@@ -72,44 +74,54 @@ async def template(message):
 async def on_message(message):
     '''
     Command that triggers everytime a message is sent on the server.
-    Checks to see if the message starts with # Chapter Summary: to log chapter and increment streak.
+    Will do a check to do log_chapter after every message (may seem wasteful but rather than then by logging using commands)
     '''
 
     if message.author.bot:
         return
     
+    if message.content.startswith("# Chapter Summary:"):
+        await log_chapter(message)
+
+    # Since this method overwrites on_message, we still need to allow bots to process commands.
+    await bot.process_commands(message)
+
+async def log_chapter(message):
+    '''
+    Checks to see if the message starts with # Chapter Summary: to log chapter and increment streak.
+    It also starts a new streak if they are not in streaks dictionary already.
+    '''
+    
     user_id = message.author.id
     channel = message.channel
 
     # Create datetime object 
-    current_date = datetime.now(AEST).date()
+    current_date = datetime.now()
 
-    if message.content.startswith("# Chapter Summary:"):
-        # Store values from streaks dictionary
-        if user_id in streaks: 
-            streak_count, last_entry_date = streaks[user_id] 
+    # Store values from streaks dictionary
+    if user_id in streaks: 
+        streak_count, last_entry_date = streaks[user_id] 
 
-            # If the date (YYYY-MM-DD) of last entry is same as today then you cannot log another chapter
-            if last_entry_date == current_date:
-                await channel.send(f"{message.author.mention}, you have already entered your chapter entry for today! 👍")
-            
-            # If the date of last entry is less than current date, then you can log a chapter.
-            elif last_entry_date < current_date:
-                streaks[user_id] = (streak_count + 1, current_date)
-                await channel.send(f"{message.author.mention}, you have logged your chapter entry for today! Keep it up!")
+        # If the date (YYYY-MM-DD) of last entry is same as today then you cannot log another chapter
+        if last_entry_date == current_date:
+            await channel.send(f"{message.author.mention}, you have already entered your chapter entry for today! 👍")
+        
+        # If the date of last entry is less than current date, then you can log a chapter.
+        elif last_entry_date < current_date:
+            streaks[user_id] = (streak_count + 1, current_date)
+            await channel.send(f"{message.author.mention}, you have logged your chapter entry for today! Keep it up!")
 
-        # Initialise a new user into streaks with a streak count of 1 and last entry date as today.
-        else:
-            streaks[user_id] = (1, current_date)
-    
-    # Since this method overwrites on_message, we still need to allow bots to process commands.
-    await bot.process_commands(message)
+    # Initialise a new user into streaks with a streak count of 1 and last entry date as today.
+    else:
+        streaks[user_id] = (1, current_date)
+        await channel.send(f"{message.author.mention}, you’ve started your streak with today's entry! 🔥")
 
 @bot.command(aliases=["streaks"])
 async def streak(message):
     '''
     Command triggered by !streak/streaks to check your own streak count.
     '''
+
     user_id = message.author.id
     channel = message.channel
 
@@ -123,13 +135,23 @@ async def streak(message):
         await channel.send(f"{message.author.mention}, you haven't started a streak yet.")
 
 @bot.command(aliases=["lb"])
-async def leaderboard(message):
+async def leaderboard(message, channel=None):
     '''
-    Command triggered by !leaderboard/lb to check the current leaderboard.
+    Command triggered by !leaderboard/lb to print the current leaderboard to the channel the message was invoked.
     '''
+
+    if channel is None:
+        channel = message.channel
+
+    await send_leaderboard(channel)
+
+async def send_leaderboard(channel):
+    '''
+    Helper function that has the logic behind printing the leaderboard and is printed to the desired channel
+    '''
+
     current_time = datetime.now(AEST)
     current_date = current_time.strftime("%d-%m-%Y")
-    channel = message.channel
     
     # Initial leaderboard message
     leaderboard_message = f"`{current_date}`\nCurrent leaders of the 4D Book Club 📖\n\n**Name:**\n"
@@ -146,12 +168,13 @@ async def leaderboard(message):
     # Send the message to the channel
     await channel.send(embed=embedded_msg)
 
-@tasks.loop(hours=1)
-async def send_leaderboard():
+@tasks.loop(minutes=1)
+async def announce_leaderboard():
     '''
     Task that the bot will execute at 8am everyday. 
-    Send the leaderboard to the #leaderboard channel every morning
+    Send the leaderboard to the #leaderboard channel every morning by invoking helper fuction send_leaderboard
     '''
+
     # Get current time (YYYY-MM-DD HH:MM:SS.mmmmm)
     current_time = datetime.now(AEST)
 
@@ -159,35 +182,23 @@ async def send_leaderboard():
     if current_time.hour == 8 and current_time.minute == 0:
 
         # Leaderboard text channel
-        channel = bot.get_channel(1286228895858819134)
-        current_date = current_time.strftime("%d-%m-%Y")
-        
-        # Initial leaderboard message
-        leaderboard_message = f"`{current_date}`\nCurrent leaders of the 4D Book Club 📖\n\n**Name:**\n"
-        
-        # Sort streaks in order of streak count and add entries to the leaderboard
-        sorted_streaks = sorted(streaks.items(), key = lambda x: x[1][0], reverse=True)
-        for idx, (user_id, (streak_count, _)) in enumerate(sorted_streaks, 1):
-            username = bot.get_user(user_id)
-            leaderboard_message += f"**{idx}.** {username.mention} - **{streak_count} days 💫** \n"
+        leaderboard_channel = bot.get_channel(1286228895858819134)
         
         # Goodmorning message
         gm_message = "@everyone Goodmorning everyone!"
-
-        # Create the embedded message
-        embedded_msg = discord.Embed(title="**⭐ 2024 Leaderboard ⭐**", description=leaderboard_message, color=discord.Color.green())
+        await leaderboard_channel.send(gm_message)
 
         # Send the message to the channel
-        await channel.send(gm_message)
-        await channel.send(embed=embedded_msg)
-
-@tasks.loop(hours=1)
+        await send_leaderboard(leaderboard_channel)
+        
+@tasks.loop(minutes=1)
 async def check_deadline():
     '''
     Task that the bot will execute at 10pm everyday.
     It checks to see if there are users with streaks that have not entered their daily chapter entry.
     It will remind them that they should enter the entry or else their streak count will be reset to 0.
     '''
+
     current_date = datetime.now(AEST).date()
     current_time = datetime.now(AEST)
 
