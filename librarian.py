@@ -168,7 +168,7 @@ async def send_leaderboard(channel):
     # Send the message to the channel
     await channel.send(embed=embedded_msg)
 
-@tasks.loop(hours=1)
+@tasks.loop(minutes=1)
 async def announce_leaderboard():
     '''
     Task that the bot will execute at 8am everyday. 
@@ -191,7 +191,7 @@ async def announce_leaderboard():
         # Send the message to the channel
         await send_leaderboard(leaderboard_channel)
         
-@tasks.loop(hours=1)
+@tasks.loop(minutes=1)
 async def check_deadline():
     '''
     Task that the bot will execute at 10pm everyday.
