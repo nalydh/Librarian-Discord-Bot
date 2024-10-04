@@ -22,7 +22,7 @@ bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
 streaks = {}
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
     '''
     This command method is called when the bot goes online.
     Prints a simple message to notify that the bot is running and starts regular tasks methods   
@@ -32,7 +32,54 @@ async def on_ready():
 
     announce_leaderboard.start()
     check_deadline.start()
+
+@bot.event
+async def on_message(message):
+    '''
+    Command that triggers everytime a message is sent on the server.
+    Will do a check to do log_chapter after every message (may seem wasteful but rather than then by logging using commands)
+    '''
+
+    if message.author.bot:
+        return
     
+    if message.content.startswith("# Chapter Summary:"):
+        await log_chapter(message)
+
+    # Since this method overwrites on_message, we still need to allow bots to process commands.
+    await bot.process_commands(message)
+
+# Helper Function
+async def log_chapter(message):
+    '''
+    Checks to see if the message starts with # Chapter Summary: to log chapter and increment streak.
+    It also starts a new streak if they are not in streaks dictionary already.
+    '''
+    
+    user_id = message.author.id
+    channel = message.channel
+
+    # Create datetime object 
+    current_date = datetime.now(AEST).date()
+
+    # Store values from streaks dictionary
+    if user_id in streaks: 
+        streak_count, last_entry_date = streaks[user_id] 
+
+        # If the date (YYYY-MM-DD) of last entry is same as today then you cannot log another chapter
+        if last_entry_date == current_date:
+            await channel.send(f"{message.author.mention}, you have already entered your chapter entry for today! 👍")
+        
+        # If the date of last entry is less than current date, then you can log a chapter.
+        elif last_entry_date < current_date:
+            streaks[user_id] = (streak_count + 1, current_date)
+            await channel.send(f"{message.author.mention}, you have logged your chapter entry for today! Keep it up!")
+
+    # Initialise a new user into streaks with a streak count of 1 and last entry date as today.
+    else:
+        streaks[user_id] = (1, current_date)
+        await channel.send(f"{message.author.mention}, you’ve started your streak with today's entry! 🔥")
+
 @bot.command()
 async def template(message):
     '''
@@ -69,52 +116,6 @@ async def template(message):
     # Deletes both the warning and template messages after 10 seconds of being sent.
     await bot_output_warning.delete(delay=10)
     await bot_output_template.delete(delay=10)
-
-@bot.event
-async def on_message(message):
-    '''
-    Command that triggers everytime a message is sent on the server.
-    Will do a check to do log_chapter after every message (may seem wasteful but rather than then by logging using commands)
-    '''
-
-    if message.author.bot:
-        return
-    
-    if message.content.startswith("# Chapter Summary:"):
-        await log_chapter(message)
-
-    # Since this method overwrites on_message, we still need to allow bots to process commands.
-    await bot.process_commands(message)
-
-async def log_chapter(message):
-    '''
-    Checks to see if the message starts with # Chapter Summary: to log chapter and increment streak.
-    It also starts a new streak if they are not in streaks dictionary already.
-    '''
-    
-    user_id = message.author.id
-    channel = message.channel
-
-    # Create datetime object 
-    current_date = datetime.now(AEST).date()
-
-    # Store values from streaks dictionary
-    if user_id in streaks: 
-        streak_count, last_entry_date = streaks[user_id] 
-
-        # If the date (YYYY-MM-DD) of last entry is same as today then you cannot log another chapter
-        if last_entry_date == current_date:
-            await channel.send(f"{message.author.mention}, you have already entered your chapter entry for today! 👍")
-        
-        # If the date of last entry is less than current date, then you can log a chapter.
-        elif last_entry_date < current_date:
-            streaks[user_id] = (streak_count + 1, current_date)
-            await channel.send(f"{message.author.mention}, you have logged your chapter entry for today! Keep it up!")
-
-    # Initialise a new user into streaks with a streak count of 1 and last entry date as today.
-    else:
-        streaks[user_id] = (1, current_date)
-        await channel.send(f"{message.author.mention}, you’ve started your streak with today's entry! 🔥")
 
 @bot.command(aliases=["streaks"])
 async def streak(message):
